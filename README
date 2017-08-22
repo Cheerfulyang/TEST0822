@@ -1,0 +1,34 @@
+GNCAR: 192.168.101.10         TCP监听端口：1234
+5IGW: 192.168.101.10            UDP监听端口：1235
+ICNNetwork: 192.168.1.12，   em2口与5IGW的em2口相连，em4口与5IGW的em4口相连
+UEAPP:192.168.101.10，         采用nc命令发送UDP报文
+
+1、UEAPP发送RequestEUID请求
+echo "{\"IcnMsgType\":\"Request_EUID\", \"eNbIp\":\"172.15.1.10\", \"MsgRequestEuid\":{\"UeName\":\"13600001119\", \"eNBNa\": \"eNB NA 1\"} }" | nc -u 192.168.101.10 1235
+
+2、UEAPP发送ICNData请求
+echo "{\"IcnMsgType\":\"Data\", \"EuidSrc\":\"123\",\"EuidDst\":\"Server EUID\", \"Payload\":\"1234\" }" | nc -u 192.168.101.10 1235
+
+3、UEAPP发送切换请求
+echo "{\"IcnMsgType\":\"Request_Switching\",\"eNBNa\":\"172.15.1.10\", \"MsgUpdateMapping\":{ \"UeEuid\": \"123\",    \"eNBNa\": \"eNB NA 2\"} }" | nc -u 192.168.101.10 1235
+                             
+
+3、GNCAR启动
+      ssh 192.168.101.10
+      cd /home/ding/JSON-RPC/jsonrpc-c/install_dir/example/
+      ./server
+
+4、ICNNetwork启动
+     ssh 192.168.101.10
+     ssh 192.168.1.12
+     cd  /home/ding/ICNNetwork/5IGW    
+     python ICN_em2.py 
+     python ICN_em4.py
+
+5、5IGW启动
+     ssh 192.168.101.10
+     cd /home/ding/JSON-RPC/5IGW
+     python gateway.py
+
+20170706rebuild
+

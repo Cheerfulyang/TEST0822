@@ -1,0 +1,51 @@
+17-07-08 12:24:18 - gateway.py - 68 - INFO - forward table: 172.15.1.14 --->>> switchID controllerID 0
+17-07-08 12:24:18 - gateway.py - 68 - INFO - forward table: 172.15.1.16 --->>> switchID controllerID 1
+17-07-08 12:24:18 - gateway.py - 98 - INFO - 5IGW is running.
+17-07-08 12:24:18 - interfaces.py - 301 - DEBUG - listening on eth3
+17-07-08 12:24:18 - interfaces.py - 301 - DEBUG - listening on eth2
+17-07-08 12:29:36 - interfaces.py - 381 - DEBUG - UE Msg type is Request_EUID_UE 
+17-07-08 12:29:36 - interfaces.py - 430 - DEBUG - ----------RequestEUID Msg, ENBIP:172.15.1.14, UENAME:UeTest-1, ENBNA:0e010fac, PORTNUM:5IGW-1  ----------
+17-07-08 12:29:36 - interfaces.py - 452 - DEBUG - ----------Response of RequestEUID Msg, UENAME:UeTest-1, EUID:0001bd4308dd3bc08fc1b6b31af62492, PORTNUM:5IGW-1 ----------
+17-07-08 12:29:36 - forward_table.py - 88 - DEBUG - UE2EUIDItem is already existed
+17-07-08 12:29:36 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.14 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:29:36 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1
+17-07-08 12:29:40 - interfaces.py - 381 - DEBUG - UE Msg type is Request_EUID_CONTENT 
+17-07-08 12:29:40 - interfaces.py - 506 - DEBUG - ----------RequestEUID Msg, ENBIP:172.15.1.14, CONTENTNAME:ocean3.wico, ENBNA:0e010fac, PORTNUM:5IGW-1  ----------
+17-07-08 12:29:40 - interfaces.py - 525 - DEBUG - ----------Response of RequestEUID Msg, CONTENTNAME:ocean3.wico, EUID:000220a7ef59c05263e320d8ed366bf8, PORTNUM:5IGW-1 ----------
+17-07-08 12:29:40 - forward_table.py - 138 - DEBUG - Data:ocean3.wico, is requested from EUID:000220a7ef59c05263e320d8ed366bf8 . 
+17-07-08 12:29:40 - forward_table.py - 97 - DEBUG - CONTENT2EUIDItem is already existed
+17-07-08 12:30:27 - interfaces.py - 381 - DEBUG - UE Msg type is Request_Switching_BOTH 
+17-07-08 12:30:27 - jsonrpc.py - 156 - ERROR - Wrong response id. Got None, expects 4. Retrying...
+17-07-08 12:30:27 - interfaces.py - 381 - DEBUG - UE Msg type is Request_Switching_BOTH 
+17-07-08 12:30:27 - interfaces.py - 813 - DEBUG - ----------UE Request Switch succeed. New binding is (0001bd4308dd3bc08fc1b6b31af62492, 000220a7ef59c05263e320d8ed366bf8, 172.15.1.16, 10010fac, 5IGW-2) ----------
+17-07-08 12:30:27 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.16 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:30:27 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1
+17-07-08 12:30:27 - interfaces.py - 813 - DEBUG - ----------UE Request Switch succeed. New binding is (0001bd4308dd3bc08fc1b6b31af62492, 000220a7ef59c05263e320d8ed366bf8, 172.15.1.16, 10010fac, 5IGW-2) ----------
+17-07-08 12:30:27 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.16 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:30:27 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1
+17-07-08 12:31:41 - interfaces.py - 381 - DEBUG - UE Msg type is Request_EUID_UE  
+17-07-08 12:43:39 - gateway.py - 68 - INFO - forward table: 172.15.1.14 --->>> switchID controllerID 0
+17-07-08 12:43:39 - gateway.py - 68 - INFO - forward table: 172.15.1.16 --->>> switchID controllerID 1
+17-07-08 12:43:39 - gateway.py - 98 - INFO - 5IGW is running.
+17-07-08 12:43:39 - interfaces.py - 301 - DEBUG - listening on eth2
+17-07-08 12:43:39 - interfaces.py - 301 - DEBUG - listening on eth3
+17-07-08 12:44:51 - interfaces.py - 381 - DEBUG - UE Msg type is Request_EUID_UE 
+17-07-08 12:44:51 - interfaces.py - 430 - DEBUG - ----------RequestEUID Msg, ENBIP:172.15.1.14, UENAME:UeTest-1, ENBNA:0e010fac, PORTNUM:5IGW-1  ----------
+17-07-08 12:44:51 - interfaces.py - 452 - DEBUG - ----------Response of RequestEUID Msg, UENAME:UeTest-1, EUID:0001bd4308dd3bc08fc1b6b31af62492, PORTNUM:5IGW-1 ----------
+17-07-08 12:44:51 - forward_table.py - 88 - DEBUG - UE2EUIDItem is already existed
+17-07-08 12:44:51 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.14 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:44:51 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1
+17-07-08 12:44:54 - interfaces.py - 381 - DEBUG - UE Msg type is Request_EUID_CONTENT 
+17-07-08 12:44:54 - interfaces.py - 506 - DEBUG - ----------RequestEUID Msg, ENBIP:172.15.1.14, CONTENTNAME:ocean3.wico, ENBNA:0e010fac, PORTNUM:5IGW-1  ----------
+17-07-08 12:44:54 - interfaces.py - 525 - DEBUG - ----------Response of RequestEUID Msg, CONTENTNAME:ocean3.wico, EUID:000220a7ef59c05263e320d8ed366bf8, PORTNUM:5IGW-1 ----------
+17-07-08 12:44:54 - forward_table.py - 138 - DEBUG - Data:ocean3.wico, is requested from EUID:000220a7ef59c05263e320d8ed366bf8 . 
+17-07-08 12:44:54 - forward_table.py - 97 - DEBUG - CONTENT2EUIDItem is already existed
+17-07-08 12:45:34 - interfaces.py - 381 - DEBUG - UE Msg type is Request_Switching_BOTH 
+17-07-08 12:45:34 - jsonrpc.py - 156 - ERROR - Wrong response id. Got None, expects 4. Retrying...
+17-07-08 12:45:34 - interfaces.py - 381 - DEBUG - UE Msg type is Request_Switching_BOTH 
+17-07-08 12:45:34 - interfaces.py - 813 - DEBUG - ----------UE Request Switch succeed. New binding is (0001bd4308dd3bc08fc1b6b31af62492, 000220a7ef59c05263e320d8ed366bf8, 172.15.1.16, 10010fac, 5IGW-2) ----------
+17-07-08 12:45:34 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.16 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:45:34 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1
+17-07-08 12:45:34 - interfaces.py - 813 - DEBUG - ----------UE Request Switch succeed. New binding is (0001bd4308dd3bc08fc1b6b31af62492, 000220a7ef59c05263e320d8ed366bf8, 172.15.1.16, 10010fac, 5IGW-2) ----------
+17-07-08 12:45:34 - forward_table.py - 144 - INFO - UENAME Map: UeTest-1 <<<--->>> 1235 192.168.1.115 172.15.1.16 0001bd4308dd3bc08fc1b6b31af62492
+17-07-08 12:45:34 - forward_table.py - 147 - INFO - UEEUID Map: 0001bd4308dd3bc08fc1b6b31af62492 <<<--->>> UeTest-1

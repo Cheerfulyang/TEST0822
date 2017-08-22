@@ -1,0 +1,103 @@
+import logging.config
+logging.config.fileConfig('logging.conf')
+
+from src import instantiate_IGW2GNCAR, instantiate_IGW2ICNNetwork, instantiateFWDTABLE, instantiate_IGWUPDServer
+from src import eNodeBItem
+import argparse
+import signal
+import sys
+import time
+import traceback
+from configure import IGW2ICN_PortName_List
+from src.interfaces import calculate_packet_num
+
+logger = logging.getLogger('5IGW') 
+
+class IGWOptions():
+    def __init__(self):
+        self.GNCAR_IP = None
+        self.GNCAR_Port = None
+        self.IGW_UDPServer_IP = None
+        self.IGW_UDPServer_Port = None
+        self.eNodeBIP_FT = None
+        self.parser = argparse.ArgumentParser()
+        
+    def add_arguments(self):
+        self.parser.add_argument("-GIP", "--GNCAR_IP", nargs = "?", help = "GNCAR IP Address", default = "210.75.225.115")
+        self.parser.add_argument("-GPT", "--GNCAR_PORT", nargs = "?", type = int, help = "GNCAR Listen Port", default = 5000)
+        self.parser.add_argument("-UIP", "--IGWUDP_IP", nargs = "?", help = "IGW UDPServer IP Address", default = "192.168.1.105")
+        self.parser.add_argument("-UPT", "--IGWUDP_PORT", nargs = "?", help = "IGW UDPServer Listen Port", type = int, default = 1235)
+        self.parser.add_argument("-eNodeBFT", "--eNodeBForwardTable", nargs = "?", help = "eNodeBIP forward table", default = "eNodeBIP_ForwardTable.conf")
+    
+    def parse_args(self):
+        args = self.parser.parse_args()
+        return args
+    
+    def set_args(self):
+        args = self.parse_args()
+        self.GNCAR_IP = args.GNCAR_IP
+        self.GNCAR_Port = args.GNCAR_PORT
+        self.IGW_UDPServer_IP = args.IGWUDP_IP
+        self.IGW_UDPServer_Port = args.IGWUDP_PORT
+        self.eNodeBIP_FT = args.eNodeBForwardTable
+        
+def Configure_eNodeBIP_ForwardTable(ForwardTable = "eNodeBIP_ForwardTable.conf"):
+    Configure_eNodeBMap = {}
+    try :
+        table = open(ForwardTable, "r")
+    except :
+        raise Exception("%s is not exist" %(ForwardTable))
+    
+    for line in table.readlines() :
+        record = line.strip()
+        if not len(record) or record.startswith('#'):
+            continue
+        record = record.split()
+        if len(record) != 4 :
+            logger.debug( "not valid eNodeBIP forward record"  )
+            continue
+        eNodeBIP = record[0]
+        SwitchID = record[1]
+        ControllerID = record[2]
+        PortID = int(record[3])
+        item = eNodeBItem(eNodeBIP, SwitchID, ControllerID, PortID)
+        Configure_eNodeBMap[ eNodeBIP ] = item
+        logger.info( "forward table: %s --->>> %s %s %u" %(eNodeBIP,       \
+                                                           Configure_eNodeBMap[eNodeBIP].SwitchID,  \
+                                                           Configure_eNodeBMap[eNodeBIP].ControllerID,  \
+                                                           Configure_eNodeBMap[eNodeBIP].PortID) )
+    table.close()
+    
+    return Configure_eNodeBMap
+
+def boot(GNCAR_IP, GNCAR_Port, IGW_UDPServer_IP, IGW_UDPServer_Port, eNodeBIP_FT, IGW2ICN_PortName_List):
+    instantiateFWDTABLE( Configure_eNodeBIP_ForwardTable(ForwardTable = eNodeBIP_FT) )
+    instantiate_IGW2GNCAR(GNCAR_IP, GNCAR_Port)
+    instantiate_IGW2ICNNetwork(ethname=IGW2ICN_PortName_List)
+    instantiate_IGWUPDServer( (IGW_UDPServer_IP, IGW_UDPServer_Port) )
+    
+def wait_exit(sleep_time):
+    while True :
+        time.sleep(sleep_time)
+
+def CtrlCHandler(signum, frame):
+    logger.info("5IGW receives a interrupt signal and begin to exit... ")
+    calculate_packet_num()
+    sys.exit()
+    
+if __name__ == "__main__" :
+    signal.signal(signal.SIGINT, CtrlCHandler)
+    options = IGWOptions()
+    options.add_arguments()
+    options.parse_args()
+    options.set_args()
+    try:
+        boot( options.GNCAR_IP, options.GNCAR_Port,  \
+              options.IGW_UDPServer_IP,  options.IGW_UDPServer_Port,     \
+              options.eNodeBIP_FT, IGW2ICN_PortName_List)
+        logger.info("5IGW is running.")
+    except Exception as e:
+        print e
+        print traceback.format_exc()
+        sys.exit()
+    wait_exit(2)    
