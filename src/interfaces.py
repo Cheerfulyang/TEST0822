@@ -120,6 +120,7 @@ class SendPacket2UE(threading.Thread):
             data = self.queue.get()  
             
             Icn_type = struct.unpack('!B', data[18:19])[0]
+            print Icn_type
             if Icn_type == 64 :
                 HRName_len = struct.unpack('!H', data[59:61])[0]
                 HRName = struct.unpack('!%us' %(HRName_len), data[61 : 61 + HRName_len])[0]
@@ -146,50 +147,63 @@ class SendPacket2UE(threading.Thread):
                     UDPServer.server.socket.sendto( data[ETH_HEADER_LEN:] , (DstIP, DstPort) )
                 output_num += 1 
             if Icn_type == 33 :
+                print "interest rsv"
                 HRName_len = struct.unpack('!H', data[54:56])[0]
                 HRName = struct.unpack('!%us' %(HRName_len), data[56 : 56 + HRName_len])[0]
                 RequestEUIDList = FWD_TABLE.CONTENTRequestMap[HRName]
                 for euid in RequestEUIDList :
                     try:
-                        CONTENTNAME = FWD_TABLE.CONTENT2EUIDMap[euid]
-                        DstPort = FWD_TABLE.CONTENTMap[CONTENTNAME].UDPort
-                        DstIP = FWD_TABLE.CONTENTMap[CONTENTNAME].IP
+                        UENAME = FWD_TABLE.UE2EUIDMap[euid]
+                        DstPort = FWD_TABLE.UEMap[UENAME].UDPort
+                        DstIP = FWD_TABLE.UEMap[UENAME].IP
                         print "tried"
                     except:
                         raise KeyError
+                    print "send"
                     UDPServer.server.socket.sendto( data[ETH_HEADER_LEN:] , (DstIP, DstPort) )
                 output_num += 1
                 
 class SendPacket2ICN(threading.Thread):  
   
-    def __init__(self, t_name, q):  
+    def __init__(self, t_name, queue):  
   
         threading.Thread.__init__(self, name=t_name)  
   
-        self.queue = q  
+        self.queue = queue  
   
     def run(self):  
-        global output_num
         while True :
             
             data = self.queue.get()  
             
             Icn_type = struct.unpack('!B', data[18:19])[0]
-            CONTENTEUID = "000220a7ef59c05263e320d8ed366bf8"
-            try:
-                CONTENTNAME = FWD_TABLE.CONTENT2EUIDMap[CONTENTEUID]
-                eNodeBIP = FWD_TABLE.CONTENTMap[CONTENTNAME].eNodeBIP
-            #record ICN request address info. When ICN data is returned, a UDP packet will be reconstructed.  
-            #The destination IP and Port will be changed to recorded address info.
-            #ICN request will be forwarded according to the eNodeBIP
-                PortID = FWD_TABLE.eNodeBMap[eNodeBIP].PortID
-            except:
-                traceback.print_exc()
-            
+            print Icn_type
             if Icn_type == 64 :
-                FWD_ICN.OutputPort[PortID].send(data)
-                output_num += 1
-                
+                HRName_len = struct.unpack('!H', data[59:61])[0]
+                HRName = struct.unpack('!%us' %(HRName_len), data[61 : 61 + HRName_len])[0]
+                RequestEUIDList = FWD_TABLE.UERequestMap[HRName]
+            
+                for euid in RequestEUIDList :
+            
+                    try:
+                        UENAME = FWD_TABLE.UE2EUIDMap[euid]
+                        DstPort = FWD_TABLE.UEMap[UENAME].UDPort
+                        DstIP = FWD_TABLE.UEMap[UENAME].IP
+                    except:
+                        raise KeyError
+
+                    #UDPServer.server.socket.sendto( data , (DstIP, DstPort) )
+                    #output_num += 1 
+                    UDPPkt = b""
+                    if DstPort == 0:
+                        sMac = "90b11c5aa88b"
+                    else:
+                        sMac = "90b11c5aa88c"
+                    EthHeader = PKTConstruct.EtherHeader( "fe163e005953" ,sMac , PKTConstruct.ICN_MAP["ETH_TYPE"])
+                    UDPPkt += EthHeader.packed()
+                    UDPPkt += data
+                    #FWD_ICN.OutputPort[PortID].send(UDPPkt)
+                    UDPServer.server.socket.sendto( UDPPkt , (DstIP, DstPort) )
 
 def instantiateFWDTABLE( Configure_eNodeBMap={} ):
     global FWD_TABLE
@@ -344,7 +358,60 @@ class IGW2ICNNetwork:
             send_data = SendPacket2UE('SendPacket' + str(i), queue)
             send_data.setDaemon(True)
             send_data.start()
+            
+    
+class IGW2UENetwork:
+    def __init__( self, ethname_list =[] ):
+        self.OutputPort = []
+        self._bindeth(ethname_list, self.OutputPort)
+        self._handledata(ethname_list)
+               
+    def _bindeth(self, ethname, OutputPort):
+        for i in range( 0, len(ethname) ):
+            sock = socket.socket(socket.AF_PACKET, socket.SOCK_RAW)
+            try:
+                sock.bind( (ethname[i], BIND_SEND_PORT) )
+            except:
+                raise Exception("create connection to UE network failed")
+            OutputPort.append(sock)
+            
+    def handledata_thread(self, interface_name, queue):
+        self.queue = queue
+        recv_socket = socket.socket(socket.PF_PACKET, socket.SOCK_RAW, socket.htons(ETH_P_ALL))
+        recv_socket.bind((interface_name, BIND_RECV_PORT))
+        
+        logger.debug( 'listening on %s' % (interface_name) )
+    #logger.debug( '\033[1;32;40m listening on %s \033[0m' % (interface_name) )
 
+        # just for 5IGW sw test for only one euid
+        if interface_name == "eth1":
+            current_portid = 0
+
+        while True :
+                data, addr = recv_socket.recvfrom(1514) 
+                if addr[2] != socket.PACKET_OUTGOING :    
+                    #check whether packet type is ICN protocol
+                    ethertype = struct.unpack('!H', data[12:14])[0]
+                    if ethertype != 0x0901 :
+                            pass
+                    else : 
+
+                            self.queue.put(data)
+                input_num += 1  
+
+    def _handledata(self, ethname_list):
+        
+        for i in range(0, len(ethname_list)) :
+            queue = Queue() 
+            
+            get_data = threading.Thread(target=self.handledata_thread, args=(ethname_list[i], queue) )
+            get_data.setDaemon(True)
+            get_data.start()
+            
+            send_data = SendPacket2ICN('SendPacket' + str(i), queue)
+            send_data.setDaemon(True)
+            send_data.start()
+                        
     
 def instantiate_IGW2ICNNetwork(ethname=[]):
     global FWD_ICN
@@ -355,6 +422,14 @@ def instantiate_IGW2ICNNetwork(ethname=[]):
         raise Exception("instantiate IGW2ICNNetwork failed!")
     return
 
+def instantiate_IGW2UENetwork(ethname=[]):
+    global FWD_UE
+    try:
+        FWD_UE = IGW2UENetwork(ethname)
+    except:
+    print traceback.format_exc()
+        raise Exception("instantiate IGW2UENetwork failed!")
+    return
         
 class IGWUDPHandle(socketserver.BaseRequestHandler):
     def handle(self):
@@ -367,8 +442,8 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
         #Interest and Data Packets are forwarded directly to the ICN
         if Icn_Type == 48:   #"0x30"
             self.handle_requestICNData(UDP_string)
-        if Icn_Type == 64:
-            self.handle_reponseData(UDP_string)
+        #if Icn_Type == 64:
+            #self.handle_reponseData(UDP_string)
         if Icn_Type == 0:
             try:
                 request_json = json.loads(request_string)
@@ -635,11 +710,84 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
                 DataString = json.dumps(result_data)
                 ResponseString = b""
                 ResponseString += struct.pack("!HHHH",  0x0064, 0x0000, 0x0100, 0x0001)
-                ResponseString += DataString               
+                ResponseString += DataString 
+		print ResponseString              
                 self.Send_Response(server_socket, DataString)
                 
                 RPC_GNCAR.notifyUpdate_BOTH(UENAME, CONTENTNAME, PORTNUM, ENBNA)
+ 
+    def handle_requestEUID(self, request_json, server_socket):
+        
+        if UE_Request_EUID_Msg_Map["ENBIP"] not in request_json:
+                raise JSONBadRequest( "Missing '%s' field" %(UE_Request_EUID_Msg_Map["ENBIP"]) )
+            
+        if UE_Request_EUID_Msg_Map["REUID"] not in request_json:
+                raise JSONBadRequest( "Missing '%s' field" %(UE_Request_EUID_Msg_Map["REUID"]) )
+            
+        MsgRequestEuid_json = request_json[ UE_Request_EUID_Msg_Map["REUID"] ]
+        
+        if UE_Request_EUID_Msg_Map["UENAME"] not in MsgRequestEuid_json:
+                raise JSONBadRequest( "Missing '%s' field" %(UE_Request_EUID_Msg_Map["UENAME"]) )
+            
+        if UE_Request_EUID_Msg_Map["ENBNA"] not in  MsgRequestEuid_json:
+                raise JSONBadRequest( "Missing '%s' field" %(UE_Request_EUID_Msg_Map["ENBNA"]) )
+        
+        ENBIP  = request_json[ UE_Request_EUID_Msg_Map["ENBIP"] ]
+        UENAME = MsgRequestEuid_json[ UE_Request_EUID_Msg_Map["UENAME"] ]
+        ENBNA  = MsgRequestEuid_json[ UE_Request_EUID_Msg_Map["ENBNA"] ]
+        #PORTNUM = FWD_TABLE.eNodeBMap[ENBIP].PortID
+        PORTNUM = None
+        if FWD_TABLE.eNodeBMap[ENBIP].PortID == 0:
+            PORTNUM = "5IGW-1"
+        elif FWD_TABLE.eNodeBMap[ENBIP].PortID == 1:
+            PORTNUM = "5IGW-2"
+        else:
+            PORTNUM = ""
+        
 
+        #logger.debug( "\n----------RequestEUID Msg, ENBIP:%s, UENAME:%s, ENBNA:%s  ----------" %(ENBIP, UENAME, ENBNA) )
+    	logger.debug( "----------RequestEUID Msg, ENBIP:%s, UENAME:%s, ENBNA:%s, PORTNUM:%s  ----------" %(ENBIP, UENAME, ENBNA, PORTNUM) )
+            
+    	if UENAME == "" or UENAME == None:	
+    	    logger.debug( "UENAME is empty!" )
+    	else:
+            if PORTNUM == "" or PORTNUM == None:    
+                logger.debug( "PORTNUM is empty!" )
+            else:	
+                result_json = RPC_GNCAR.requestEUID(UENAME, PORTNUM)
+                    #result_json = RPC_GNCAR.requestEUID(UENAME)
+                if 'ueName' not in result_json :
+                        logger.debug( "Response msg:%s", str(result_json))
+        		raise JSONBadRequest( "Missing '%s' field" %("ueName") )
+                if 'ueEuid' not in result_json :
+        		logger.debug( "Response msg:%s", str(result_json))
+                        raise JSONBadRequest( "Missing '%s' field" %("ueEuid") )
+                    
+                UENAME = result_json['ueName']
+                UEEUID = result_json['ueEuid']
+                
+                    #logger.debug( "\n----------Response of RequestEUID Msg, UENAME:%s, EUID:%s ----------" %(UENAME, UEEUID) )
+        		#logger.debug( "----------Response of RequestEUID Msg, UENAME:%s, EUID:%s ----------" %(UENAME, UEEUID) )
+                logger.debug( "----------Response of RequestEUID Msg, UENAME:%s, EUID:%s, PORTNUM:%s ----------" %(UENAME, UEEUID, PORTNUM) )
+                
+                UE2ENBIP = UEItem(UENAME, self.client_address[1], self.client_address[0], ENBIP, UEEUID)
+                FWD_TABLE.UEMap_Add_Item(UE2ENBIP)
+                
+                UE2EUID  = UE2EUIDItem(UENAME, UEEUID)
+                FWD_TABLE.UE2EUIDMap_Add_Item(UE2EUID)
+                
+                FWD_TABLE.show_fwd_table()
+                
+                result_data = {}
+                result_data[ UE_Request_EUID_Msg_Map["ICN_MSG_TYPE"] ] = "Response_EUID"
+                result_data[IGW_ICN_Control_Msg_Map["UeName"]] = UENAME
+                result_data[IGW_ICN_Control_Msg_Map["UeEuid"]] = UEEUID
+                
+                DataString = json.dumps(result_data)
+                        
+                self.Send_Response(server_socket, DataString)
+                
+                RPC_GNCAR.notifyUpdate(UENAME, PORTNUM, ENBNA)
         
     def handle_notifySwitching_UE(self, request_json):
         if UE_Request_Switch_Msg_Map["ENBNA"] not in request_json:
@@ -800,9 +948,10 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
         
 
         global sw_index, sw_time1, swtime2, sw_portid
-	ENB = FWD_TABLE.CONTENTMap[FWD_TABLE.CONTENT2EUIDMap[CONTENTEUID]].eNodeBIP
-        if ENB != eNodeBIP:
-	    result_json = RPC_GNCAR.updateMapping_BOTH(UEEUID, CONTENTEUID, PORTNUM, eNodeBNA)
+
+
+        if FWD_TABLE.UEMap[FWD_TABLE.UE2EUIDMap[UEEUID]].eNodeBIP != eNodeBIP:
+            result_json = RPC_GNCAR.updateMapping_BOTH(UEEUID, CONTENTEUID, PORTNUM, eNodeBNA)
         
         if "status" not in result_json :
             raise JSONBadRequest( "Missing '%s' field" %("status") )
@@ -814,14 +963,25 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
             #logger.debug( "\033[1;32;40m ----------UE Request Switch succeed. New binding is (%s, %s, %s) ---------- \033[0m" %(UEEUID, eNodeBIP, eNodeBNA) ) 
             try:
                 UENAME = FWD_TABLE.UE2EUIDMap[UEEUID]
-                CONTENTNAME = FWD_TABLE.CONTENT2EUIDMap[CONTENTEUID]
                 FWD_TABLE.UEMap[UENAME].eNodeBIP = eNodeBIP
-                FWD_TABLE.CONTENTMap[CONTENTNAME].eNodeBIP = eNodeBIP
             except:
                 raise KeyError
         
             FWD_TABLE.show_fwd_table()
         
+            #send interest
+            InterestPkt = b""
+              
+              
+            if FWD_TABLE.eNodeBMap[eNodeBIP].PortID == 0:
+                interest = "fe163e00595390b11c5aa88b09010064000032000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000b6f6365616e332e7769636f"
+            else:
+                interest = "fe163e00595390b11c5aa88c09010064000032000000ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff000b6f6365616e332e7769636f"
+                #interest = "11223344556666554433221109010064000032000000ffffffffffffffffffffffffffffffff000b6f6365616e322e7769636f"
+        
+            for i in xrange(0, len(interest)/2):
+                        value = int(interest[i*2:i*2+2], 16)
+                        InterestPkt += struct.pack("!B", value)
             #UENAME = FWD_TABLE.UE2EUIDMap[UEEUID]
             #eNodeBIP = FWD_TABLE.UEMap[UENAME].eNodeBIP
             #PortID = FWD_TABLE.eNodeBMap[eNodeBIP].PortID
@@ -831,11 +991,11 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
             #print("-----------------------")    
             #FWD_ICN.OutputPort[1].send(InterestPkt)
             portid = FWD_TABLE.eNodeBMap[eNodeBIP].PortID
-            #FWD_ICN.OutputPort[portid].send(InterestPkt)
+            FWD_ICN.OutputPort[portid].send(InterestPkt)
             sw_index = True
             sw_time1 = time.time()
             sw_portid = portid
-            #logger.debug( "Both Request Switch and resend interest. New binding is (%s, %s)" %(UEEUID, eNodeBNA) )            
+            logger.debug( "Both Request Switch and resend interest. New binding is (%s, %s)" %(UEEUID, eNodeBNA) )            
 
         elif StatusCode == "NACK" :
             logger.error( "Both Request Switch failed. New binding is (%s, %s)"  %(UEEUID, eNodeBNA) )
@@ -973,25 +1133,24 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
 
     def handle_reponseData(self, UDP_string):    
         #UEEUID = struct.unpack('!16B', UDP_string[8:24])[0]
-        #CONTENTEUID1 = UDP_string[24:40][0]
-        #CONTENTEUID = binascii.b2a_hex(CONTENTEUID1) 
-	CONTENTEUID = "000220a7ef59c05263e320d8ed366bf8"
-        #UEEUID = "000180ea54a717d9803ab19a7f4cce60"     
-        #try:
-        CONTENTNAME = FWD_TABLE.CONTENT2EUIDMap[CONTENTEUID]
-        eNodeBIP = FWD_TABLE.CONTENTMap[CONTENTNAME].eNodeBIP
+        #UEEUID1 = UDP_string[8:24]
+        #UEEUID = binascii.b2a_hex(UEEUID1) 
+        UEEUID = "000180ea54a717d9803ab19a7f4cce60"        
+        try:
+            UENAME = FWD_TABLE.UE2EUIDMap[UEEUID]
+            eNodeBIP = FWD_TABLE.UEMap[UENAME].eNodeBIP
             #record ICN request address info. When ICN data is returned, a UDP packet will be reconstructed.  
             #The destination IP and Port will be changed to recorded address info.
-        FWD_TABLE.CONTENTMap[CONTENTNAME].UDPort = self.client_address[1]
-        FWD_TABLE.CONTENTMap[CONTENTNAME].IP = self.client_address[0]
+            FWD_TABLE.UEMap[UENAME].UDPort = self.client_address[1]
+            FWD_TABLE.UEMap[UENAME].IP = self.client_address[0]
             #ICN request will be forwarded according to the eNodeBIP
-        PortI = FWD_TABLE.eNodeBMap[eNodeBIP].PortID
-        #except:
-            #traceback.print_exc()
+            PortID = FWD_TABLE.eNodeBMap[eNodeBIP].PortID
+        except:
+            traceback.print_exc()
         
         
         UDPPkt = b""
-        if PortI == 0:
+        if PortID == 0:
             sMac = "90b11c5aa88b"
         else:
             sMac = "90b11c5aa88c"
@@ -1002,8 +1161,7 @@ class IGWUDPHandle(socketserver.BaseRequestHandler):
         #Payload is a hex string representing a InterestPkt payload
         UDPPkt += UDP_string
         #ICNData = json.dumps(request_json)
-        q.put(UDPPkt)
-        #FWD_ICN.OutputPort[PortID].send(UDPPkt)
+        FWD_ICN.OutputPort[PortID].send(UDPPkt)
                
 
 class IGWUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
@@ -1011,16 +1169,10 @@ class IGWUDPServer(socketserver.ThreadingMixIn, socketserver.UDPServer):
     
 class IGW2UEAPP:
     def __init__(self, server_address):
-        global q 
-        q = Queue()
         self.server = IGWUDPServer(server_address, IGWUDPHandle)
         self.server_thread = threading.Thread(target=self.server.serve_forever)
         self.server_thread.setDaemon(True)
         self.server_thread.start()
-        
-        self.send_data = SendPacket2ICN('SendPacket' , q)
-        self.send_data.setDaemon(True)
-        self.send_data.start()
         
 def instantiate_IGWUPDServer( Server_Address ):
     global UDPServer
